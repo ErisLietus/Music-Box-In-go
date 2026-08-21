@@ -8,7 +8,8 @@ import (
 	"os"
 	"sync/atomic"
 
-	"github.com/ErisLietus/go-http-client/internal/database"
+	"github.com/ErisLietus/Music_box_go/internal/database"
+
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -32,7 +33,7 @@ func main() {
 	}
 	dbQueries := database.New(db)
 
-	const filepathRoot = "."
+	const filepathRoot = "./static"
 	const port = "8080"
 
 	apiCfg := apiConfig{
@@ -43,7 +44,9 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
+	mux.Handle("/app/", apiCfg.middlewareMetricsInc(
+		http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))),
+	))
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
@@ -51,6 +54,8 @@ func main() {
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
 	mux.HandleFunc("PUT /api/users", apiCfg.handlerUsersUpdate)
+	mux.HandleFunc("POST /api/playlists", apiCfg.handlerCreatePlaylist)
+	mux.HandleFunc("POST /api/media", apiCfg.handlerImportMediaLink)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

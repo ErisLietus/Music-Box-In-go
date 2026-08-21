@@ -28,7 +28,7 @@ func CheckPasswordHash(pass, hash string) (bool, error) {
 
 func MakeJWT(userID uuid.UUID, tokenSecret string) (string, error) {
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Issuer:    "chirpy-access",
+		Issuer:    "music-box-access",
 		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(time.Hour)),
 		Subject:   userID.String(),
@@ -56,15 +56,15 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		TError := fmt.Errorf("Token is nil")
 		return uuid.Nil, TError
 	}
-
-	sub, err := token.Claims.GetSubject()
-	if err != nil {
-		return uuid.Nil, err
-	}
 	if !token.Valid {
 		TError := fmt.Errorf("Token is not valid")
 		return uuid.Nil, TError
 	}
+	sub, err := token.Claims.GetSubject()
+	if err != nil {
+		return uuid.Nil, err
+	}
+
 	ID, err := uuid.Parse(sub)
 	return ID, err
 }
@@ -72,17 +72,22 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 func GetBearerToken(headers http.Header) (string, error) {
 	auth := headers.Get("Authorization")
 	if auth == "" {
-		TError := fmt.Errorf("A Token Error occurred")
-		return "", TError
+		return "", fmt.Errorf("missing authorization header")
 	}
-	return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer")), nil
-
+	const prefix = "Bearer "
+	if !strings.HasPrefix(auth, prefix) {
+		return "", fmt.Errorf("malformed authorization header")
+	}
+	return strings.TrimSpace(strings.TrimPrefix(auth, prefix)), nil
 }
 
-func MakeRefreshToken() string {
+func MakeRefreshToken() (string, error) {
 	token := make([]byte, 32)
-	rand.Read(token)
-	return hex.EncodeToString(token)
+	_, err := rand.Read(token)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(token), nil
 }
 
 func GetAPIKey(headers http.Header) (string, error) {

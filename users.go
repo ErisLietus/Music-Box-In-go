@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
-	"github.com/ErisLietus/go-http-client/internal/auth"
-	"github.com/ErisLietus/go-http-client/internal/database"
+	"github.com/ErisLietus/Music_box_go/internal/auth"
+	"github.com/ErisLietus/Music_box_go/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -27,7 +28,6 @@ type FoundUser struct {
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
-	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 type HashedUser struct {
@@ -52,10 +52,12 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 	hashed, err := auth.HashPassword(user.Password)
 	if err != nil {
 		respondWithError(w, 400, "hashing error")
+		return
 	}
+	emailHash := auth.HashEmail(user.Email, os.Getenv("EMAILSECRET"))
 
 	params := database.CreateUserParams{
-		Email:          user.Email,
+		HashedEmail:    emailHash,
 		HashedPassword: hashed,
 	}
 
@@ -70,7 +72,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 		ID:        data.ID,
 		CreatedAt: data.CreatedAt,
 		UpdatedAt: data.UpdatedAt,
-		Email:     data.Email,
+		Email:     data.HashedEmail,
 	}
 	respondWithJSON(w, 201, response)
 }
@@ -83,7 +85,8 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	data, err := cfg.db.CheckUserByEmail(ctx, user.Email)
+	lookupHash := auth.HashEmail(user.Email, os.Getenv("EMAILSECRET"))
+	data, err := cfg.db.CheckUserByEmail(ctx, lookupHash)
 	if err != nil {
 		respondWithError(w, 401, "Incorrect email")
 		return
@@ -98,7 +101,11 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 400, "No Token")
 		return
 	}
-	refreshToken := auth.MakeRefreshToken()
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, 400, "could not make token")
+		return
+	}
 
 	params := database.CreateRefreshTokenParams{
 		Token:     refreshToken,
@@ -114,7 +121,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		ID:           data.ID,
 		CreatedAt:    data.CreatedAt,
 		UpdatedAt:    data.UpdatedAt,
-		Email:        data.Email,
+		Email:        data.HashedEmail,
 		Token:        JWTtoken,
 		RefreshToken: dataToken.Token,
 	}
@@ -148,10 +155,11 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 	hashedPass, err := auth.HashPassword(update.Password)
 	if err != nil {
 		respondWithError(w, 400, "Could not update password")
+		return
 	}
 	params := database.UpdateUserParams{
 		ID:             userID,
-		Email:          update.Email,
+		HashedEmail:    update.Email,
 		HashedPassword: hashedPass,
 	}
 	data, err := cfg.db.UpdateUser(ctx, params)
@@ -163,7 +171,7 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		ID:        userID,
 		CreatedAt: data.CreatedAt,
 		UpdatedAt: data.UpdatedAt,
-		Email:     data.Email,
+		Email:     data.HashedEmail,
 	}
 	respondWithJSON(w, 200, response)
 }

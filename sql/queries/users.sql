@@ -1,20 +1,30 @@
 -- name: CreateUser :one
-INSERT INTO users (id, created_at, updated_at, email, hashed_password)
+INSERT INTO users (
+    id,
+    created_at,
+    username,
+    hashed_email,
+    hashed_password
+)
 VALUES (
     gen_random_uuid(),
-     now(),
-     now(),
-     $1,
-     $2
+    NOW(),
+    $1,
+    $2,
+    $3
 )
 RETURNING *;
 
--- name: DeleteUsers :exec
-DELETE FROM users; 
+-- name: CheckUserByEmail :one
+SELECT * FROM users
+WHERE hashed_email = $1;
 
--- name: CheckUserByEmail :one 
-SELECT * from users
-where email = $1;
+-- name: CheckUserByUsername :one
+SELECT * FROM users
+WHERE username = $1;
+
+-- name: DeleteUsers :exec
+DELETE FROM users;
 
 -- name: GetUserFromRefreshToken :one
 SELECT * from users
@@ -23,7 +33,7 @@ WHERE refresh_tokens.token = $1 and refresh_tokens.expires_at > NOW() and refres
 
 -- name: UpdateUser :one 
 UPDATE users
-SET email = $2, hashed_password = $3, updated_at = NOW()
+SET hashed_email = $2, hashed_password = $3, updated_at = NOW()
 WHERE $1 = id
 RETURNING *;
 

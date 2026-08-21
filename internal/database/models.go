@@ -6,10 +6,75 @@ package database
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type MediaType string
+
+const (
+	MediaTypeAudio MediaType = "audio"
+	MediaTypeVideo MediaType = "video"
+	MediaTypeLink  MediaType = "link"
+)
+
+func (e *MediaType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MediaType(s)
+	case string:
+		*e = MediaType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MediaType: %T", src)
+	}
+	return nil
+}
+
+type NullMediaType struct {
+	MediaType MediaType
+	Valid     bool // Valid is true if MediaType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMediaType) Scan(value interface{}) error {
+	if value == nil {
+		ns.MediaType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MediaType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMediaType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MediaType), nil
+}
+
+type Medium struct {
+	ID            uuid.UUID
+	PlaylistID    uuid.UUID
+	Title         string
+	FileUrl       string
+	CreatedAt     time.Time
+	Type          MediaType
+	Position      int32
+	AddedByUserID uuid.UUID
+}
+
+type Playlist struct {
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	Name             string
+	CreatedAt        time.Time
+	IsPublic         bool
+	AllowCollabEdits bool
+}
 
 type RefreshToken struct {
 	Token     string
@@ -22,8 +87,9 @@ type RefreshToken struct {
 
 type User struct {
 	ID             uuid.UUID
+	Username       string
+	HashedEmail    string
+	HashedPassword string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
-	Email          string
-	HashedPassword string
 }

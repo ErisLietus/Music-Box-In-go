@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/ErisLietus/go-http-client/internal/auth"
+	"github.com/ErisLietus/Music_box_go/internal/auth"
 )
 
 type CreateRefreshToken struct {
@@ -43,8 +43,10 @@ func (cfg *apiConfig) handlerRevoke(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 401, "Could not use token")
 		return
 	}
-	cfg.db.RevokeToken(ctx, bearerToken)
-
-	respondWithJSON(w, 204, nil)
-
+	err = cfg.db.RevokeToken(ctx, bearerToken)
+	if err != nil {
+		respondWithError(w, 500, "Could not revoke token")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
