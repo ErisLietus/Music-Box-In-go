@@ -5,26 +5,22 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync/atomic"
 
 	"github.com/ErisLietus/Music_box_go/internal/database"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-)
+	/*"github.com/caddyserver/certmagic"*/)
 
 type apiConfig struct {
-	fileserverHits atomic.Int32
-	db             *database.Queries
-	platform       string
-	jwt            string
+	db  *database.Queries
+	jwt string
 }
 
 func main() {
 
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
-	plat := os.Getenv("PLATFORM")
 	jwt := os.Getenv("JWTSECRET")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -36,10 +32,8 @@ func main() {
 	const port = "8080"
 
 	apiCfg := apiConfig{
-		fileserverHits: atomic.Int32{},
-		db:             dbQueries,
-		platform:       plat,
-		jwt:            jwt,
+		db:  dbQueries,
+		jwt: jwt,
 	}
 
 	mux := http.NewServeMux()
