@@ -58,17 +58,27 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 	}
 	nextPosition := maxPosition + 1
 
-	mediatype, err := detectMediaType(req.MediaURL)
+	mediaType, err := detectMediaType(req.MediaURL)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Url is invalid")
+		return
+	}
+	if mediaType != database.MediaTypeLink {
+		respondWithError(w, http.StatusBadRequest, "Format is not a link ")
+		return
+	}
+
+	embedUrl, err := adjustMediaURL(req.MediaURL)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "this is not a valid url")
 		return
 	}
 
 	param := database.CreateMediaParams{
 		PlaylistID:    playlist.ID,
 		Title:         req.Title,
-		FileUrl:       req.MediaURL,
-		Type:          mediatype,
+		FileUrl:       embedUrl,
+		Type:          mediaType,
 		Position:      nextPosition,
 		AddedByUserID: userID,
 	}
@@ -101,4 +111,21 @@ func detectMediaType(rawURL string) (database.MediaType, error) {
 		return database.MediaTypeVideo, nil
 	}
 	return database.MediaTypeLink, nil
+}
+
+func adjustMediaURL(URL string) (string, error) {
+	parsedURL, err := url.ParseRequestURI(URL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return "", fmt.Errorf("invalid URL: must include scheme and host")
+	}
+	parsedURL.Path = "embed/"
+	parsedURL.RawQuery = strings.TrimSpace(strings.TrimPrefix(parsedURL.RawQuery, "v="))
+	splitURL := strings.Split(parsedURL.String(), "?")
+	if len(splitURL) == 3 {
+		splitURL[1] = ""
+	}
+	finalURL := strings.Join(splitURL, "")
+	fmt.Println(finalURL)
+
+	return finalURL, nil
 }

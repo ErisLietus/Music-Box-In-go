@@ -25,3 +25,7 @@ RETURNING *;
 -- name: DeletePlaylist :exec
 DELETE FROM playlists
 where id = $1;
+
+-- name: ChangeAllowCollab :one
+SELECT * FROM playlists
+WHERE allow_collab_edits = $1;
