@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/ErisLietus/Music_box_go/internal/auth"
@@ -128,4 +131,35 @@ func adjustMediaURL(URL string) (string, error) {
 	fmt.Println(finalURL)
 
 	return finalURL, nil
+}
+
+func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Upload file handler hit")
+
+	r.ParseMultipartForm(10 << 20)
+
+	file, _, err := r.FormFile("uploadedFile")
+	if err != nil {
+		fmt.Println("Could got retrieve file")
+		fmt.Println(err)
+		return
+	}
+	defer file.Close()
+
+	tempFile, err := os.CreateTemp("media-temp", "upload-*.mp3")
+	if err != nil {
+		log.Fatalf("Error could not create temp file: %v", err)
+	}
+	defer tempFile.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		log.Fatalf("Error reading file: %v", err)
+	}
+	_, err = tempFile.Write(fileBytes)
+	if err != nil {
+		log.Fatalf("Error writing to temp file: %v", err)
+	}
+	fmt.Println("Successful upload")
+	respondWithJSON(w, 200, "SuccessfulUpload")
 }

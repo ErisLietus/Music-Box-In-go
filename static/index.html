@@ -1,5 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+    <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  <body>
+    <form
+      enctype="multipart/form-data"
+      action="http://localhost:8080/api/uploadMP3"
+      method="post"
+    >
+      <input type="file" name="uploadedFile" />
+      <input type="submit" value="upload" />
+    </form>
+  </body>
+</html>
   <head>
     <meta charset="UTF-8">
     <title>Web Music Box</title>
@@ -15,8 +32,8 @@
     <button>User Playlist</button>
 
     <iframe
-    width="400"
-    height="400"
+    width="560"
+    height="315"
     src="https://www.youtube.com/embed/a8dgNdJVluc"
     title="Video link"
     allow="accelerometer; autoplay; clipboard-write; encrypted-media;"
