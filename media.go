@@ -136,21 +136,26 @@ func adjustMediaURL(URL string) (string, error) {
 func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Upload file handler hit")
 
-	r.ParseMultipartForm(10 << 20)
+	r.ParseMultipartForm(100 << 20)
 
-	file, _, err := r.FormFile("uploadedFile")
+	file, handler, err := r.FormFile("uploadedFile")
 	if err != nil {
 		fmt.Println("Could got retrieve file")
 		fmt.Println(err)
 		return
 	}
 	defer file.Close()
+	fmt.Printf("Uploaded File: %+v\n", handler.Filename)
+	fmt.Printf("File Size: %+v\n", handler.Size)
+	fmt.Printf("MIME Header: %+v\n", handler.Header)
 
 	tempFile, err := os.CreateTemp("media-temp", "upload-*.mp3")
 	if err != nil {
 		log.Fatalf("Error could not create temp file: %v", err)
 	}
 	defer tempFile.Close()
+
+	fmt.Printf("filename: %+v\n", tempFile.Name())
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
