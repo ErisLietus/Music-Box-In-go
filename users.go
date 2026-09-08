@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -40,6 +41,7 @@ type UpdateUser struct {
 }
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Create User was hit properly")
 	var user CreatedUser
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&user); err != nil {
