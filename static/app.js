@@ -1,11 +1,5 @@
-import fetch from "node-fetch"
-
-let signupButton = document.querySelector(`#signup`);
-
-signupButton.addEventListener(`click`, console.log("I hate this"))
-
-
-
+const signupButton = document.getElementById("signup");
+signupButton.addEventListener(`click`, console.log("I hate this"));
 
     async function signup() {
     console.log("This button was clicked WITH GUSTO!")
@@ -29,6 +23,4 @@ signupButton.addEventListener(`click`, console.log("I hate this"))
              alert(`Error: ${error.message}`);
         }
     }
-)
-    
-
+        
