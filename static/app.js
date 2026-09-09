@@ -1,5 +1,5 @@
 const signupButton = document.getElementById("signup");
-signupButton.addEventListener(`click`, console.log("I hate this"));
+signupButton.addEventListener(`click`, function () {signup();});
 
     async function signup() {
     console.log("This button was clicked WITH GUSTO!")
