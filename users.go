@@ -66,7 +66,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 	data, err := cfg.db.CreateUser(ctx, params)
 	if err != nil {
 		log.Printf("CreateUser failed: %v", err)
-		respondWithError(w, http.StatusInternalServerError, "Server Error")
+		respondWithError(w, http.StatusInternalServerError, "Please try again")
 		return
 	}
 
@@ -80,6 +80,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
+	fmt.Print("Login endpoint was hit")
 	var user CreatedUser
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&user); err != nil {
@@ -127,6 +128,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		Token:        JWTtoken,
 		RefreshToken: dataToken.Token,
 	}
+	fmt.Print("Was logged in")
 	respondWithJSON(w, 200, response)
 }
 
