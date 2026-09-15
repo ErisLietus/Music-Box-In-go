@@ -1,4 +1,14 @@
+document.addEventListener('DOMContentLoaded', async () => {
+  const token = localStorage.getItem('token');
 
+  if (token) {
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('after-login').style.display = 'block';
+  } else {
+    document.getElementById('auth-section').style.display = 'block';
+    document.getElementById('after-login').style.display = 'none';
+  }
+});
 
 
 const signupButton = document.getElementById("signup");
@@ -6,6 +16,9 @@ signupButton.addEventListener(`click`, function () {signup();});
 
 const loginButton = document.getElementById("login")
 loginButton.addEventListener(`click`, function (){login();});
+
+const logoutButton = document.getElementById("logout");
+logoutButton.addEventListener(`click`, function (){logout();});
     
 
 async function signup() {
@@ -47,16 +60,25 @@ async function signup() {
             const data = await res.json();
             if (!res.ok) {
                 throw new Error(`Failed to login: ${data.error}`);
+            
             }
-
-            if (data.token){
-                localStorage.setItem(`token`, data.token);
-            }
-
+                if (data.token) {
+                    console.log("User has logged out")
+                    localStorage.setItem('token', data.token);
+                    document.getElementById('auth-section').style.display = 'none';
+                    document.getElementById('after-login').style.display = 'block';
+                }
         }catch(error){
             alert(`Error: ${error.message}`);
         }
         
     }
+
+    function logout() {
+        console.log("user has logged out")
+        localStorage.removeItem('token');
+        document.getElementById('auth-section').style.display = 'block';
+         document.getElementById('after-login').style.display = 'none';
+}
 
         
