@@ -1,3 +1,5 @@
+import { confetti } from "./confetti.js"
+
 document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('token');
 
@@ -19,6 +21,8 @@ loginButton.addEventListener(`click`, function (){login();});
 
 const logoutButton = document.getElementById("logout");
 logoutButton.addEventListener(`click`, function (){logout();});
+
+const createPlaylistButton = document.getElementById("")
     
 
 async function signup() {
@@ -81,4 +85,30 @@ async function signup() {
          document.getElementById('after-login').style.display = 'none';
 }
 
+    async function createplaylist() {
+        const title = document.getElementById("name")
+        const public = document.getElementById("public")
+        const collab = document.getElementById("collab")
+
+        try {
+            const res = await fetch("/api/playlists", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem(`token`)}`, 
+                }, 
+                body: JSON.stringify({title, public, collab}),
+            });
+            const data = res.json();
+            if (!res.ok) {
+                throw new Error("Failed to create playlist")
+            }
+            console.log("It uploaded")
+            const newButton = document.createElement("button")
+            newButton.setAttribute("type", "button")
+            newbutton.InnerHTML
+        }catch(error){
+            alert(`Error: ${error.message}`);
+            }
+        }
         

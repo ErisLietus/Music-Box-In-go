@@ -134,13 +134,32 @@ func adjustMediaURL(URL string) (string, error) {
 }
 
 func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwt)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token")
+		return
+	}
+
 	fmt.Println("Upload file handler hit")
+
+	var req ImportMediaRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
 
 	r.ParseMultipartForm(100 << 20)
 
 	file, handler, err := r.FormFile("uploadedFile")
 	if err != nil {
-		fmt.Println("Could got retrieve file")
+		fmt.Println("Could not retrieve file")
 		fmt.Println(err)
 		return
 	}
@@ -166,5 +185,43 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("Error writing to temp file: %v", err)
 	}
 	fmt.Println("Successful upload")
-	respondWithJSON(w, 200, "SuccessfulUpload")
+
+	mediaType, err := detectMediaType(req.MediaURL)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "File  is invalid")
+		return
+	}
+	if mediaType != database.MediaTypeLink {
+		respondWithError(w, http.StatusBadRequest, "Format is not a valid ")
+		return
+	}
+
+	playlist, err := cfg.db.GetPlaylistByUser(ctx, database.GetPlaylistByUserParams{
+		UserID: userID,
+		Name:   req.PlaylistName,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Playlist not found")
+		return
+	}
+	maxPosition, err := cfg.db.GetMaxMediaPosition(ctx, playlist.ID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not get media position")
+		return
+	}
+	nextPosition := maxPosition + 1
+
+	param := database.CreateMediaParams{
+		PlaylistID:    playlist.ID,
+		Title:         handler.Filename,
+		FileUrl:       handler.Filename,
+		Type:          mediaType,
+		Position:      nextPosition,
+		AddedByUserID: userID,
+	}
+
+	cfg.db.NoneLinkAdded(ctx, playlist.ID)
+
+	createdMedia, err := cfg.db.CreateMedia(ctx, param)
+	respondWithJSON(w, 200, createdMedia)
 }

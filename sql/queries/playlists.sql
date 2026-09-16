@@ -26,6 +26,7 @@ RETURNING *;
 DELETE FROM playlists
 where id = $1;
 
--- name: ChangeAllowCollab :one
-SELECT * FROM playlists
-WHERE allow_collab_edits = $1;
+-- name: NoneLinkAdded :exec
+UPDATE playlists 
+SET allow_collab_edits = FALSE, is_public = FALSE
+WHERE id = $1;

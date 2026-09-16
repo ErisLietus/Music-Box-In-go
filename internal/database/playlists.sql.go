@@ -11,25 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const changeAllowCollab = `-- name: ChangeAllowCollab :one
-SELECT id, user_id, name, created_at, is_public, allow_collab_edits FROM playlists
-WHERE allow_collab_edits = $1
-`
-
-func (q *Queries) ChangeAllowCollab(ctx context.Context, allowCollabEdits bool) (Playlist, error) {
-	row := q.db.QueryRowContext(ctx, changeAllowCollab, allowCollabEdits)
-	var i Playlist
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Name,
-		&i.CreatedAt,
-		&i.IsPublic,
-		&i.AllowCollabEdits,
-	)
-	return i, err
-}
-
 const createPlaylist = `-- name: CreatePlaylist :one
 INSERT INTO playlists (
     id,
@@ -109,4 +90,15 @@ func (q *Queries) GetPlaylistByUser(ctx context.Context, arg GetPlaylistByUserPa
 		&i.AllowCollabEdits,
 	)
 	return i, err
+}
+
+const noneLinkAdded = `-- name: NoneLinkAdded :exec
+UPDATE playlists 
+SET allow_collab_edits = FALSE, is_public = FALSE
+WHERE id = $1
+`
+
+func (q *Queries) NoneLinkAdded(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, noneLinkAdded, id)
+	return err
 }
