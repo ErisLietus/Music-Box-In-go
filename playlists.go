@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -18,7 +19,7 @@ type CreatePlaylistRequest struct {
 }
 
 func (cfg *apiConfig) handlerCreatePlaylist(w http.ResponseWriter, r *http.Request) {
-	// 1. Authenticate user from Bearer token
+	fmt.Printf("playlist endpoint was hit")
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized")

@@ -1,4 +1,4 @@
-import { confetti } from "./confetti.js"
+
 
 document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('token');
@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+document.getElementById("yay-button").style.display = `none`; 
 
 const signupButton = document.getElementById("signup");
 signupButton.addEventListener(`click`, function () {signup();});
@@ -22,7 +23,8 @@ loginButton.addEventListener(`click`, function (){login();});
 const logoutButton = document.getElementById("logout");
 logoutButton.addEventListener(`click`, function (){logout();});
 
-const createPlaylistButton = document.getElementById("")
+const createPlaylistButton = document.getElementById("create-playlist-button");
+createPlaylistButton.addEventListener(`click`, function(){createPlaylist();});
     
 
 async function signup() {
@@ -85,10 +87,10 @@ async function signup() {
          document.getElementById('after-login').style.display = 'none';
 }
 
-    async function createplaylist() {
-        const title = document.getElementById("name")
-        const public = document.getElementById("public")
-        const collab = document.getElementById("collab")
+    async function createPlaylist() {
+        const name = document.getElementById("name").value
+        const isPublic = document.getElementById("public").value
+        const allowCollabEdits = document.getElementById("collab").value
 
         try {
             const res = await fetch("/api/playlists", {
@@ -97,18 +99,18 @@ async function signup() {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${localStorage.getItem(`token`)}`, 
                 }, 
-                body: JSON.stringify({title, public, collab}),
+                body: JSON.stringify({name, isPublic, allowCollabEdits}),
             });
-            const data = res.json();
             if (!res.ok) {
                 throw new Error("Failed to create playlist")
             }
             console.log("It uploaded")
-            const newButton = document.createElement("button")
-            newButton.setAttribute("type", "button")
-            newbutton.InnerHTML
+            document.getElementById("yay-button").style.display = `block`; 
+            
         }catch(error){
             alert(`Error: ${error.message}`);
             }
         }
+
+    
         
