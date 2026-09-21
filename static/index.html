@@ -47,7 +47,27 @@
     allowfullscreen
     ></iframe>
     
-    <form
+ 
+
+    <form id="create-playlist">
+      <label for="name">Name of playlist</label>
+      <input type="text" id ="name" placeholder="Boot's secret metal collection"></input>
+      <label for="public">Would you like to make this public?</label>
+      <input type="checkbox" id="public"></input>
+      <label type="collab">Would you like others to be able to edit this playlist?</label>
+      <input type="checkbox" id="collab"></input>
+      <button type="button" id="create-playlist-button"> </button>
+    </form>
+    <button id="logout">Logout</button>
+    </div>
+    <div id="create-media">
+      <form
+      enctype="multipart/form-data"
+      action="http://localhost:8080/api/uploadMP3"
+      method="post"
+      >
+    <label>
+        <form
       enctype="multipart/form-data"
       action="http://localhost:8080/api/uploadMP3"
       method="post"
@@ -59,23 +79,10 @@
       <button type="submit">Submit</button>
       </label>
     </form>
-
-    <form id="create-playlist">
-      <input type="text" id ="name" placeholder="Boot's secret metal collection"></input>
-      <input type="checkbox" id="public"></input>
-      <input type="checkbox" id="collab"></input>
-      <button type="button" id="create-playlist-button"> </button>
-      <button type="button" id="yay-button">
-    </form>
-    <button id="logout">Logout</button>
+        
     </div>
-    <div id="Yay-buton">
-        <button>Yay
-          <script src="https://cdn.jsdelivr.net/npm/@hiseb/confetti@2.2.0/dist/confetti.min.js"></script>
-          <script>
-            confetti();
-          </script>
-        </button>
+    <div id="yay-button">
+        <button>Yay</button>
     </div>
 </body>
 </html>

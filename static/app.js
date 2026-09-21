@@ -1,4 +1,4 @@
-
+import confetti from "./@hiseb/confetti";
 
 document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('token');
@@ -25,6 +25,9 @@ logoutButton.addEventListener(`click`, function (){logout();});
 
 const createPlaylistButton = document.getElementById("create-playlist-button");
 createPlaylistButton.addEventListener(`click`, function(){createPlaylist();});
+
+const yayButton = document.getElementById("yay-button")
+yayButton.addEventListener("click", function() {confetti()})
     
 
 async function signup() {
