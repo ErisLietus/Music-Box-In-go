@@ -67,19 +67,16 @@
       method="post"
       >
     <label>
-        <form
-      enctype="multipart/form-data"
-      action="http://localhost:8080/api/uploadMP3"
-      method="post"
-      >
-    <label>
       Upload Mp3 
     
       <input type="file" name="uploadedFile" />
       <button type="submit">Submit</button>
       </label>
     </form>
-        
+        <form id="create-link">
+          <label for="link-name">Link</label>
+          <input type="text" id="link-name">
+        </form>
     </div>
     <div id="yay-button">
         <button>Yay</button>
