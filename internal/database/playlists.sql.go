@@ -92,6 +92,41 @@ func (q *Queries) GetPlaylistByUser(ctx context.Context, arg GetPlaylistByUserPa
 	return i, err
 }
 
+const getUserplaylists = `-- name: GetUserplaylists :many
+SELECT id, user_id, name, created_at, is_public, allow_collab_edits FROM playlists
+WHERE user_id = $1 OR is_public = TRUE
+`
+
+func (q *Queries) GetUserplaylists(ctx context.Context, userID uuid.UUID) ([]Playlist, error) {
+	rows, err := q.db.QueryContext(ctx, getUserplaylists, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Playlist
+	for rows.Next() {
+		var i Playlist
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.IsPublic,
+			&i.AllowCollabEdits,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const noneLinkAdded = `-- name: NoneLinkAdded :exec
 UPDATE playlists 
 SET allow_collab_edits = FALSE, is_public = FALSE

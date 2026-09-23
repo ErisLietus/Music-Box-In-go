@@ -45,7 +45,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 	var user CreatedUser
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&user); err != nil {
-		respondWithError(w, 400, "Something when wrong")
+		respondWithError(w, 400, "Something when wrong", err)
 		return
 	}
 
@@ -53,7 +53,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 
 	hashed, err := auth.HashPassword(user.Password)
 	if err != nil {
-		respondWithError(w, 400, "hashing error")
+		respondWithError(w, 400, "hashing error", err)
 		return
 	}
 	emailHash := auth.HashEmail(user.Email, os.Getenv("EMAILSECRET"))
@@ -66,7 +66,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 	data, err := cfg.db.CreateUser(ctx, params)
 	if err != nil {
 		log.Printf("CreateUser failed: %v", err)
-		respondWithError(w, http.StatusInternalServerError, "Please try again")
+		respondWithError(w, http.StatusInternalServerError, "Please try again", err)
 		return
 	}
 
@@ -84,29 +84,29 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	var user CreatedUser
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&user); err != nil {
-		respondWithError(w, 400, "Something when wrong")
+		respondWithError(w, 400, "Something when wrong", err)
 		return
 	}
 	ctx := r.Context()
 	lookupHash := auth.HashEmail(user.Email, os.Getenv("EMAILSECRET"))
 	data, err := cfg.db.CheckUserByEmail(ctx, lookupHash)
 	if err != nil {
-		respondWithError(w, 401, "Incorrect email")
+		respondWithError(w, 401, "Incorrect email", err)
 		return
 	}
 	match, err := auth.CheckPasswordHash(user.Password, data.HashedPassword)
 	if err != nil || match == false {
-		respondWithError(w, 401, "Wrong password")
+		respondWithError(w, 401, "Wrong password", err)
 		return
 	}
 	JWTtoken, err := auth.MakeJWT(data.ID, cfg.jwt)
 	if err != nil {
-		respondWithError(w, 400, "No Token")
+		respondWithError(w, 400, "No Token", err)
 		return
 	}
 	refreshToken, err := auth.MakeRefreshToken()
 	if err != nil {
-		respondWithError(w, 400, "could not make token")
+		respondWithError(w, 400, "could not make token", err)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	dataToken, err := cfg.db.CreateRefreshToken(ctx, params)
 	if err != nil {
-		respondWithError(w, 400, "could not make refresh token")
+		respondWithError(w, 400, "could not make refresh token", err)
 		return
 	}
 	response := FoundUser{
@@ -136,12 +136,12 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, 401, "No token")
+		respondWithError(w, 401, "No token", err)
 		return
 	}
 	userID, err := auth.ValidateJWT(token, cfg.jwt)
 	if err != nil {
-		respondWithError(w, 401, "No User found")
+		respondWithError(w, 401, "No User found", err)
 		return
 	}
 	ctx := r.Context()
@@ -149,16 +149,16 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 	var update UpdateUser
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&update); err != nil {
-		respondWithError(w, 400, "Something when wrong")
+		respondWithError(w, 400, "Something when wrong", err)
 		return
 	}
 	if update.Email == "" || update.Password == "" {
-		respondWithError(w, 400, "No Email or Password Given")
+		respondWithError(w, 400, "No Email or Password Given", err)
 		return
 	}
 	hashedPass, err := auth.HashPassword(update.Password)
 	if err != nil {
-		respondWithError(w, 400, "Could not update password")
+		respondWithError(w, 400, "Could not update password", err)
 		return
 	}
 	params := database.UpdateUserParams{
@@ -168,7 +168,7 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 	}
 	data, err := cfg.db.UpdateUser(ctx, params)
 	if err != nil {
-		respondWithError(w, 500, "User could not be updated")
+		respondWithError(w, 500, "User could not be updated", err)
 		return
 	}
 	response := FoundUser{

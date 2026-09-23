@@ -47,6 +47,7 @@ func main() {
 	mux.HandleFunc("POST /api/playlists", apiCfg.handlerCreatePlaylist)
 	mux.HandleFunc("POST /api/media", apiCfg.handlerImportMediaLink)
 	mux.HandleFunc("POST /api/uploadMP3", apiCfg.uploadMediaMP3)
+	mux.HandleFunc("GET /api/getUserPlaylists", apiCfg.handlerGetPlaylists)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

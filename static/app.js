@@ -1,18 +1,18 @@
-import confetti from "./@hiseb/confetti";
-
 document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('token');
 
   if (token) {
     document.getElementById('auth-section').style.display = 'none';
     document.getElementById('after-login').style.display = 'block';
+    
   } else {
     document.getElementById('auth-section').style.display = 'block';
     document.getElementById('after-login').style.display = 'none';
+    document.getElementById(`create-media`).style.display = `none`;
   }
 });
 
-document.getElementById("yay-button").style.display = `none`; 
+
 
 const signupButton = document.getElementById("signup");
 signupButton.addEventListener(`click`, function () {signup();});
@@ -26,8 +26,6 @@ logoutButton.addEventListener(`click`, function (){logout();});
 const createPlaylistButton = document.getElementById("create-playlist-button");
 createPlaylistButton.addEventListener(`click`, function(){createPlaylist();});
 
-const yayButton = document.getElementById("yay-button")
-yayButton.addEventListener("click", function() {confetti()})
     
 
 async function signup() {
@@ -48,6 +46,7 @@ async function signup() {
             throw new Error(`Failed to create user: ${data.error}`);
             }
             console.log("User created!")
+            await login();
         }catch (error){
              alert(`Error: ${error.message}`);
         }
@@ -76,6 +75,9 @@ async function signup() {
                     localStorage.setItem('token', data.token);
                     document.getElementById('auth-section').style.display = 'none';
                     document.getElementById('after-login').style.display = 'block';
+                    await getPlaylists()
+                } else {
+                    alert('Login failed. Please check your credentials.');
                 }
         }catch(error){
             alert(`Error: ${error.message}`);
@@ -108,12 +110,40 @@ async function signup() {
                 throw new Error("Failed to create playlist")
             }
             console.log("It uploaded")
-            document.getElementById("yay-button").style.display = `block`; 
+           document.getElementById("yay-button").style.display = `block`; 
+           document.getElementById("create-media").style.display = `block`;
             
         }catch(error){
             alert(`Error: ${error.message}`);
             }
         }
+
+        async function getPlaylists() {
+            try {
+                const res = await fetch("/api/getUserPlaylists", {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`,
+                     }
+                    });
+                        if (!res.ok){
+                            const data = await res.json();
+                            throw new error(`Failed to get playlists, Error: ${data.error}`);
+                        }
+                        const playlists = await res.json();
+                        const playlistList = document.getElementById("playlist-list");
+                        playlistList.innerHTML = ""
+                        for (const playlist of playlists){
+                            const listItem = document.createElement("li");
+                            listItem.textContent = playlist.name;
+                            playlistList.appendChild(listItem)
+                        }
+                    }catch (error){
+                        alert(`Error json: ${error.message}`);
+                    }
+        }
+            
+        
 
     
         

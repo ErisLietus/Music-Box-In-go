@@ -24,12 +24,12 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
 		return
 	}
 	userID, err := auth.ValidateJWT(token, cfg.jwt)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Invalid token")
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
 		return
 	}
 
@@ -37,12 +37,12 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 	var req ImportMediaRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err)
 		return
 	}
 
 	if req.Title == "" || req.PlaylistName == "" || req.MediaURL == "" {
-		respondWithError(w, http.StatusBadRequest, "Missing information to complete action please try again")
+		respondWithError(w, http.StatusBadRequest, "Missing information to complete action please try again", err)
 		return
 	}
 
@@ -51,29 +51,29 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 		Name:   req.PlaylistName,
 	})
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Playlist not found")
+		respondWithError(w, http.StatusNotFound, "Playlist not found", err)
 		return
 	}
 	maxPosition, err := cfg.db.GetMaxMediaPosition(ctx, playlist.ID)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not get media position")
+		respondWithError(w, http.StatusInternalServerError, "Could not get media position", err)
 		return
 	}
 	nextPosition := maxPosition + 1
 
 	mediaType, err := detectMediaType(req.MediaURL)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Url is invalid")
+		respondWithError(w, http.StatusBadRequest, "Url is invalid", err)
 		return
 	}
 	if mediaType != database.MediaTypeLink {
-		respondWithError(w, http.StatusBadRequest, "Format is not a link ")
+		respondWithError(w, http.StatusBadRequest, "Format is not a link ", err)
 		return
 	}
 
 	embedUrl, err := adjustMediaURL(req.MediaURL)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "this is not a valid url")
+		respondWithError(w, http.StatusBadRequest, "this is not a valid url", err)
 		return
 	}
 
@@ -87,7 +87,7 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 	}
 	createdMedia, err := cfg.db.CreateMedia(ctx, param)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not create media")
+		respondWithError(w, http.StatusInternalServerError, "Could not create media", err)
 		return
 	}
 
@@ -137,12 +137,12 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
 		return
 	}
 	userID, err := auth.ValidateJWT(token, cfg.jwt)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Invalid token")
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 	var req ImportMediaRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err)
 		return
 	}
 
@@ -188,11 +188,11 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 
 	mediaType, err := detectMediaType(req.MediaURL)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "File  is invalid")
+		respondWithError(w, http.StatusBadRequest, "File  is invalid", err)
 		return
 	}
 	if mediaType != database.MediaTypeLink {
-		respondWithError(w, http.StatusBadRequest, "Format is not a valid ")
+		respondWithError(w, http.StatusBadRequest, "Format is not a valid ", err)
 		return
 	}
 
@@ -201,12 +201,12 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 		Name:   req.PlaylistName,
 	})
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Playlist not found")
+		respondWithError(w, http.StatusNotFound, "Playlist not found", err)
 		return
 	}
 	maxPosition, err := cfg.db.GetMaxMediaPosition(ctx, playlist.ID)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not get media position")
+		respondWithError(w, http.StatusInternalServerError, "Could not get media position", err)
 		return
 	}
 	nextPosition := maxPosition + 1

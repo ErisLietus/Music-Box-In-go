@@ -14,19 +14,19 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bearerToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, 401, "Could not use token")
+		respondWithError(w, 401, "Could not use token", err)
 		return
 	}
 
 	user, err := cfg.db.GetUserFromRefreshToken(ctx, bearerToken)
 	if err != nil {
-		respondWithError(w, 401, "Token has been revoked")
+		respondWithError(w, 401, "Token has been revoked", err)
 		return
 	}
 
 	newAccessToken, err := auth.MakeJWT(user.ID, cfg.jwt)
 	if err != nil {
-		respondWithError(w, 500, "Invalid")
+		respondWithError(w, 500, "Invalid", err)
 		return
 	}
 
@@ -40,12 +40,12 @@ func (cfg *apiConfig) handlerRevoke(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bearerToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, 401, "Could not use token")
+		respondWithError(w, 401, "Could not use token", err)
 		return
 	}
 	err = cfg.db.RevokeToken(ctx, bearerToken)
 	if err != nil {
-		respondWithError(w, 500, "Could not revoke token")
+		respondWithError(w, 500, "Could not revoke token", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

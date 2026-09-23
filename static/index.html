@@ -6,80 +6,80 @@
   <title>MusicBox</title>
   <link rel="stylesheet" href="style.css">
   <script type="module" src="app.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@hiseb/confetti@2.2.0/dist/confetti.min.js" defer></script>
 </head>
 <body>
-
   <h1>MusicBox</h1>
-
   <div id="auth-section">
-      <h2>Login</h2>
-      <form id="login-form">
-        <input
-          class="input-area"
-          type="email"
-          id="email"
-          placeholder="Email"
-          required
-        />
-        <input
-          class="input-area"
-          type="password"
-          id="password"
-          placeholder="Password"
-          required
-        />
-        <div class="button-container">
-          <button type="button" id="login">Login</button>
-          <button type="button" id="signup">Signup</button>
-        </div>
-      </form>
-    </div>
+    <h2>Login</h2>
+    <form id="login-form">
+      <input
+        class="input-area"
+        type="email"
+        id="email"
+        placeholder="Email"
+        required
+      />
+      <input
+        class="input-area"
+        type="password"
+        id="password"
+        placeholder="Password"
+        required
+      />
+      <div class="button-container">
+        <button type="button" id="login">Login</button>
+        <button type="button" id="signup">Signup</button>
+      </div>
+    </form>
+  </div>
 
-    <div id="after-login">
-      
-    <iframe
-    width="560"
-    height="315"
-    src="https://www.youtube.com/embed/a8dgNdJVluc"
-    title="Video link"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media;"
-    referrerpolicy="strict-origin-when-cross-origin"
-    allowfullscreen
-    ></iframe>
+  <div id="after-login">
+    <h2>Playlist List</h2>
+    <ul id="playlist-list"></ul>
+
     
- 
+    <iframe
+      width="560"
+      height="315"
+      src="https://www.youtube.com/embed/a8dgNdJVluc"
+      title="Video link"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media;"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen
+    ></iframe>
 
     <form id="create-playlist">
       <label for="name">Name of playlist</label>
-      <input type="text" id ="name" placeholder="Boot's secret metal collection"></input>
+      <input type="text" id="name" placeholder="Enter playlist name" />
       <label for="public">Would you like to make this public?</label>
-      <input type="checkbox" id="public"></input>
-      <label type="collab">Would you like others to be able to edit this playlist?</label>
-      <input type="checkbox" id="collab"></input>
-      <button type="button" id="create-playlist-button"> </button>
+      <input type="checkbox" id="public" name="public" />
+      <label for="collab">Would you like others to be able to edit this playlist?</label>
+      <input type="checkbox" id="collab" name="collab" />
+      <button type="button" id="create-playlist-button">Create Playlist</button>
     </form>
     <button id="logout">Logout</button>
-    </div>
-    <div id="create-media">
-      <form
+  </div>
+
+  <div id="create-media">
+    <form
       enctype="multipart/form-data"
       action="http://localhost:8080/api/uploadMP3"
       method="post"
-      >
-    <label>
-      Upload Mp3 
-    
-      <input type="file" name="uploadedFile" />
+    >
+      <label>Upload MP3</label>
+      <input type="file" name="uploadedFile" accept="audio/mpeg, audio/mp3" />
       <button type="submit">Submit</button>
-      </label>
     </form>
-        <form id="create-link">
-          <label for="link-name">Link</label>
-          <input type="text" id="link-name">
-        </form>
-    </div>
-    <div id="yay-button">
-        <button>Yay</button>
-    </div>
+    <form id="create-link">
+      <label for="link-name">Link</label>
+      <input type="text" id="link-name" name="link-name" />
+      <button type="submit">Add Link</button>
+    </form>
+  </div>
+
+  <div id="yay-button">
+    <button type="button" onclick="confetti();">Yay</button>
+  </div>
 </body>
 </html>

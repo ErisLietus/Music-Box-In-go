@@ -30,3 +30,7 @@ where id = $1;
 UPDATE playlists 
 SET allow_collab_edits = FALSE, is_public = FALSE
 WHERE id = $1;
+
+-- name: GetUserplaylists :many
+SELECT * FROM playlists
+WHERE user_id = $1 OR is_public = TRUE;
