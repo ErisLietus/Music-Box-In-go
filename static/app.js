@@ -134,8 +134,9 @@ async function signup() {
                         const playlistList = document.getElementById("playlist-list");
                         playlistList.innerHTML = ""
                         for (const playlist of playlists){
+                            console.log(playlist.Name)
                             const listItem = document.createElement("li");
-                            listItem.textContent = playlist.name;
+                            listItem.textContent = playlist.Name;
                             playlistList.appendChild(listItem)
                         }
                     }catch (error){
