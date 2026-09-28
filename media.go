@@ -14,12 +14,6 @@ import (
 	"github.com/ErisLietus/Music_box_go/internal/database"
 )
 
-type ImportMediaRequest struct {
-	MediaURL     string `json:"media_url"`
-	PlaylistName string `json:"playlist_name"`
-	Title        string `json:"title"`
-}
-
 func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	token, err := auth.GetBearerToken(r.Header)
@@ -121,16 +115,16 @@ func adjustMediaURL(URL string) (string, error) {
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
 		return "", fmt.Errorf("invalid URL: must include scheme and host")
 	}
-	parsedURL.Path = "embed/"
-	parsedURL.RawQuery = strings.TrimSpace(strings.TrimPrefix(parsedURL.RawQuery, "v="))
-	splitURL := strings.Split(parsedURL.String(), "?")
-	if len(splitURL) == 3 {
-		splitURL[1] = ""
-	}
-	finalURL := strings.Join(splitURL, "")
-	fmt.Println(finalURL)
+	videoID := parsedURL.Query().Get("v")
+	finalURL := fmt.Sprintf("https://www.youtube.com/embed/%s", videoID)
 
 	return finalURL, nil
+}
+
+type ImportMediaRequest struct {
+	MediaURL     string `json:"media_url"`
+	PlaylistName string `json:"playlist_name"`
+	Title        string `json:"title"`
 }
 
 func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
@@ -148,14 +142,14 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Upload file handler hit")
 
-	var req ImportMediaRequest
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err)
+	if err := r.ParseMultipartForm(100 << 20); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Could not parse form", err)
 		return
 	}
 
-	r.ParseMultipartForm(100 << 20)
+	playlistName := r.FormValue("playlist_name")
+	mediaUrl := r.FormValue("media_url")
+	title := r.FormValue("title")
 
 	file, handler, err := r.FormFile("uploadedFile")
 	if err != nil {
@@ -170,7 +164,8 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 
 	tempFile, err := os.CreateTemp("media-temp", "upload-*.mp3")
 	if err != nil {
-		log.Fatalf("Error could not create temp file: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Could not upload", err)
+		return
 	}
 	defer tempFile.Close()
 
@@ -186,7 +181,7 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println("Successful upload")
 
-	mediaType, err := detectMediaType(req.MediaURL)
+	mediaType, err := detectMediaType(mediaUrl)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "File  is invalid", err)
 		return
@@ -198,7 +193,7 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 
 	playlist, err := cfg.db.GetPlaylistByUser(ctx, database.GetPlaylistByUserParams{
 		UserID: userID,
-		Name:   req.PlaylistName,
+		Name:   playlistName,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Playlist not found", err)
@@ -213,7 +208,7 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 
 	param := database.CreateMediaParams{
 		PlaylistID:    playlist.ID,
-		Title:         handler.Filename,
+		Title:         title,
 		FileUrl:       handler.Filename,
 		Type:          mediaType,
 		Position:      nextPosition,

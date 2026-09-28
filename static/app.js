@@ -2,17 +2,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   const token = localStorage.getItem('token');
 
   if (token) {
+    const isValid = await checktoken(token);
+    if (isValid) {
     document.getElementById('auth-section').style.display = 'none';
     document.getElementById('after-login').style.display = 'block';
-    
+    } else {
+        localStorage.removeItem(`token`)
+        document.getElementById('login-form').style.display = 'block';
+        document.getElementById("signup-form").style.display = 'none';
+        document.getElementById('after-login').style.display = 'none';
+        document.getElementById(`create-media`).style.display = 'none';
+    }
   } else {
-    document.getElementById('auth-section').style.display = 'block';
-    document.getElementById('after-login').style.display = 'none';
-    document.getElementById(`create-media`).style.display = `none`;
+     document.getElementById('login-form').style.display = 'block';
+        document.getElementById("signup-form").style.display = 'none';
+        document.getElementById('after-login').style.display = 'none';
+        document.getElementById(`create-media`).style.display = 'none';
   }
 });
 
 
+const beforeSignupButton = document.getElementById("before-sign-up")
+beforeSignupButton.addEventListener(`click`, function() {
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById("signup-form").style.display = 'block';
+})
+
+document.getElementById("back-to-login").addEventListener("click", () => {
+    document.getElementById('signup-form').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+});
 
 const signupButton = document.getElementById("signup");
 signupButton.addEventListener(`click`, function () {signup();});
@@ -26,12 +45,20 @@ logoutButton.addEventListener(`click`, function (){logout();});
 const createPlaylistButton = document.getElementById("create-playlist-button");
 createPlaylistButton.addEventListener(`click`, function(){createPlaylist();});
 
-    
+
+
+async function checktoken(token) {
+    const res = await fetch('/api/checkUser', {
+        headers: {Authorization: `Bearer ${token}`}
+    });
+    return res.ok
+}
 
 async function signup() {
     console.log("This button was clicked WITH GUSTO!")
-    const email = document.getElementById('email').value
-    const password = document.getElementById('password').value
+    const email = document.getElementById('signup-email').value
+    const password = document.getElementById('signup-password').value
+    const username = document.getElementById(`signup-username`).value
 
     try {
         const res = await fetch("/api/signup", {
@@ -39,7 +66,7 @@ async function signup() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ email, password , username}),
         });
         if (!res.ok){
             const data = await res.json();
@@ -88,14 +115,15 @@ async function signup() {
     function logout() {
         console.log("user has logged out")
         localStorage.removeItem('token');
-        document.getElementById('auth-section').style.display = 'block';
-         document.getElementById('after-login').style.display = 'none';
+        document.getElementById('login-form').style.display = 'block';
+        document.getElementById('signup-form').style.display = 'none';
+        document.getElementById('after-login').style.display = 'none';
 }
 
     async function createPlaylist() {
         const name = document.getElementById("name").value
-        const isPublic = document.getElementById("public").value
-        const allowCollabEdits = document.getElementById("collab").value
+        const isPublic = document.getElementById("public").checked
+        const allowCollabEdits = document.getElementById("collab").checked
 
         try {
             const res = await fetch("/api/playlists", {

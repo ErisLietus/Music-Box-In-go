@@ -15,6 +15,7 @@ import (
 
 type CreatedUser struct {
 	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
 	Password  string    `json:"password"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -61,6 +62,7 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 	params := database.CreateUserParams{
 		HashedEmail:    emailHash,
 		HashedPassword: hashed,
+		Username:       user.Username,
 	}
 
 	data, err := cfg.db.CreateUser(ctx, params)
@@ -161,9 +163,10 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, 400, "Could not update password", err)
 		return
 	}
+	emailHash := auth.HashEmail(update.Email, os.Getenv("EMAILSECRET"))
 	params := database.UpdateUserParams{
 		ID:             userID,
-		HashedEmail:    update.Email,
+		HashedEmail:    emailHash,
 		HashedPassword: hashedPass,
 	}
 	data, err := cfg.db.UpdateUser(ctx, params)
@@ -178,4 +181,18 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		Email:     data.HashedEmail,
 	}
 	respondWithJSON(w, 200, response)
+}
+
+func (cfg *apiConfig) CheckUserHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	_, err = auth.ValidateJWT(token, cfg.jwt)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
+		return
+	}
+	respondWithJSON(w, http.StatusAccepted, "User is logged in")
 }

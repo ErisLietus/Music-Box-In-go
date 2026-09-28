@@ -10,7 +10,7 @@ VALUES (
     gen_random_uuid(),
     NOW(),
     $1,
-    $2,
+    $2, 
     $3
 )
 RETURNING *;
@@ -19,9 +19,6 @@ RETURNING *;
 SELECT * FROM users
 WHERE hashed_email = $1;
 
--- name: CheckUserByUsername :one
-SELECT * FROM users
-WHERE username = $1;
 
 -- name: DeleteUsers :exec
 DELETE FROM users;
@@ -36,9 +33,3 @@ UPDATE users
 SET hashed_email = $2, hashed_password = $3, updated_at = NOW()
 WHERE $1 = id
 RETURNING *;
-
--- name: UpgradeToRed :one
-UPDATE users
-set is_chirpy_red = TRUE
-where $1 = id
-RETURNING *; 

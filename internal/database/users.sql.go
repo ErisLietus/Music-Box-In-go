@@ -32,25 +32,6 @@ func (q *Queries) CheckUserByEmail(ctx context.Context, hashedEmail string) (Use
 	return i, err
 }
 
-const checkUserByUsername = `-- name: CheckUserByUsername :one
-SELECT id, username, hashed_email, hashed_password, created_at, updated_at FROM users
-WHERE username = $1
-`
-
-func (q *Queries) CheckUserByUsername(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRowContext(ctx, checkUserByUsername, username)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
-		&i.HashedEmail,
-		&i.HashedPassword,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     id,
@@ -63,7 +44,7 @@ VALUES (
     gen_random_uuid(),
     NOW(),
     $1,
-    $2,
+    $2, 
     $3
 )
 RETURNING id, username, hashed_email, hashed_password, created_at, updated_at
@@ -154,27 +135,6 @@ type UpdateUserParams struct {
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
 	row := q.db.QueryRowContext(ctx, updateUser, arg.ID, arg.HashedEmail, arg.HashedPassword)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
-		&i.HashedEmail,
-		&i.HashedPassword,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const upgradeToRed = `-- name: UpgradeToRed :one
-UPDATE users
-set is_chirpy_red = TRUE
-where $1 = id
-RETURNING id, username, hashed_email, hashed_password, created_at, updated_at
-`
-
-func (q *Queries) UpgradeToRed(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, upgradeToRed, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
