@@ -165,12 +165,59 @@ async function signup() {
                             console.log(playlist.Name)
                             const listItem = document.createElement("li");
                             listItem.textContent = playlist.Name;
-                            playlistList.appendChild(listItem)
+                            const contentDiv = document.createElement("div");
+                            contentDiv.className = "playlist-content";
+                            contentDiv.id = `playlist-${playlist.ID}`;
+                            contentDiv.style.display = "none";
+
+                            listItem.addEventListener("click", async () => {
+                            collapseAllExcept(contentDiv.id);
+                            if (contentDiv.innerHTML === "") {
+                            await loadMediaForPlaylist(playlist.ID, contentDiv);
+                            }
+                             });
+                            playlistList.appendChild(listItem);
+                            playlistList.appendChild(contentDiv);
+                            }
+                        }catch (error){
+                            alert(`Error json: ${error.message}`);
                         }
-                    }catch (error){
-                        alert(`Error json: ${error.message}`);
-                    }
+                }
+
+        function collapseAllExcept(openId) {
+            document.querySelectorAll('.playlist-content').forEach(el => {
+                el.style.display = (el.id === openId) ? 'block' : 'none';
+                });
+            }
+
+        async function loadMediaForPlaylist(id, contentDiv) {
+            const res = await fetch(`/api/media?playlist_id=${id}`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+             });
+            if (!res.ok) {
+            contentDiv.textContent = "Failed to load media.";
+            return;
+            }
+            const mediaItems = await res.json();
+            mediaItems.forEach(item => {
+            if (item.type === "link") {
+            const iframe = document.createElement("iframe");
+            iframe.src = item.file_url;
+            contentDiv.appendChild(iframe);
+             } else {
+                 const audio = document.createElement("audio");
+                audio.controls = true;
+                audio.src = `/${item.file_url}`;
+                contentDiv.appendChild(audio);
+             }
+            });
+
+            const addMediaForm = document.getElementById("create-media");
+            contentDiv.appendChild(addMediaForm);
+            addMediaForm.dataset.playlistId = id;
+            addMediaForm.style.display = "block";
         }
+
             
         
 

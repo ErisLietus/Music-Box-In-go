@@ -68,6 +68,25 @@ func (q *Queries) DeletePlaylist(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getPlaylistByID = `-- name: GetPlaylistByID :one
+SELECT id, user_id, name, created_at, is_public, allow_collab_edits from playlists
+where id = $1
+`
+
+func (q *Queries) GetPlaylistByID(ctx context.Context, id uuid.UUID) (Playlist, error) {
+	row := q.db.QueryRowContext(ctx, getPlaylistByID, id)
+	var i Playlist
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.IsPublic,
+		&i.AllowCollabEdits,
+	)
+	return i, err
+}
+
 const getPlaylistByUser = `-- name: GetPlaylistByUser :one
 SELECT id, user_id, name, created_at, is_public, allow_collab_edits FROM playlists
 WHERE user_id = $1 AND name = $2

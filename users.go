@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ErisLietus/Music_box_go/internal/auth"
@@ -57,7 +58,8 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, 400, "hashing error", err)
 		return
 	}
-	emailHash := auth.HashEmail(user.Email, os.Getenv("EMAILSECRET"))
+	lowercaseEmail := strings.ToLower(user.Email)
+	emailHash := auth.HashEmail(lowercaseEmail, os.Getenv("EMAILSECRET"))
 
 	params := database.CreateUserParams{
 		HashedEmail:    emailHash,
@@ -90,7 +92,8 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	lookupHash := auth.HashEmail(user.Email, os.Getenv("EMAILSECRET"))
+	lowercaseEmail := strings.ToLower(user.Email)
+	lookupHash := auth.HashEmail(lowercaseEmail, os.Getenv("EMAILSECRET"))
 	data, err := cfg.db.CheckUserByEmail(ctx, lookupHash)
 	if err != nil {
 		respondWithError(w, 401, "Incorrect email", err)
@@ -163,7 +166,8 @@ func (cfg *apiConfig) handlerUsersUpdate(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, 400, "Could not update password", err)
 		return
 	}
-	emailHash := auth.HashEmail(update.Email, os.Getenv("EMAILSECRET"))
+	lowercaseEmail := strings.ToLower(update.Email)
+	emailHash := auth.HashEmail(lowercaseEmail, os.Getenv("EMAILSECRET"))
 	params := database.UpdateUserParams{
 		ID:             userID,
 		HashedEmail:    emailHash,

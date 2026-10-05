@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/ErisLietus/Music_box_go/internal/auth"
 	"github.com/ErisLietus/Music_box_go/internal/database"
+	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Request) {
@@ -27,23 +27,31 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// 2. Decode the request body
 	var req ImportMediaRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&req); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err)
 		return
 	}
+	ID := r.URL.Query().Get("playlist_id")
 
-	if req.Title == "" || req.PlaylistName == "" || req.MediaURL == "" {
+	playlistId, err := uuid.Parse(ID)
+
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+	}
+
+	if req.Title == "" || req.MediaURL == "" {
 		respondWithError(w, http.StatusBadRequest, "Missing information to complete action please try again", err)
 		return
 	}
 
-	playlist, err := cfg.db.GetPlaylistByUser(ctx, database.GetPlaylistByUserParams{
-		UserID: userID,
-		Name:   req.PlaylistName,
-	})
+	playlist, err := cfg.db.GetPlaylistByID(ctx, playlistId)
+
+	if playlist.UserID != userID || playlist.AllowCollabEdits == false {
+		respondWithError(w, http.StatusBadRequest, "Edit not allowed", err)
+	}
+
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Playlist not found", err)
 		return
@@ -55,13 +63,9 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 	}
 	nextPosition := maxPosition + 1
 
-	mediaType, err := detectMediaType(req.MediaURL)
+	mediaType, err := LinkMediaCheck(req.MediaURL)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Url is invalid", err)
-		return
-	}
-	if mediaType != database.MediaTypeLink {
-		respondWithError(w, http.StatusBadRequest, "Format is not a link ", err)
+		respondWithError(w, http.StatusBadRequest, "Only youtube links are supported", err)
 		return
 	}
 
@@ -89,7 +93,7 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 
 }
 
-func detectMediaType(rawURL string) (database.MediaType, error) {
+func LinkMediaCheck(rawURL string) (database.MediaType, error) {
 	parsedURL, err := url.ParseRequestURI(rawURL)
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
 		return "", fmt.Errorf("invalid URL: must include scheme and host")
@@ -99,15 +103,7 @@ func detectMediaType(rawURL string) (database.MediaType, error) {
 	if strings.Contains(host, "youtube.com") || strings.Contains(host, "youtu.be") {
 		return database.MediaTypeLink, nil
 	}
-
-	path := strings.ToLower(parsedURL.Path)
-	if strings.HasSuffix(path, ".mp3") || strings.HasSuffix(path, ".ogg") || strings.HasSuffix(path, ".wav") {
-		return database.MediaTypeAudio, nil
-	}
-	if strings.HasSuffix(path, ".mp4") || strings.HasSuffix(path, ".webm") {
-		return database.MediaTypeVideo, nil
-	}
-	return database.MediaTypeLink, nil
+	return "", fmt.Errorf("only youtube links are supported")
 }
 
 func adjustMediaURL(URL string) (string, error) {
@@ -148,7 +144,6 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	playlistName := r.FormValue("playlist_name")
-	mediaUrl := r.FormValue("media_url")
 	title := r.FormValue("title")
 
 	file, handler, err := r.FormFile("uploadedFile")
@@ -162,7 +157,7 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("File Size: %+v\n", handler.Size)
 	fmt.Printf("MIME Header: %+v\n", handler.Header)
 
-	tempFile, err := os.CreateTemp("media-temp", "upload-*.mp3")
+	tempFile, err := os.CreateTemp("media-storage", "upload-*.mp3")
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not upload", err)
 		return
@@ -173,21 +168,23 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		log.Fatalf("Error reading file: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Could not create media", err)
+		return
 	}
 	_, err = tempFile.Write(fileBytes)
 	if err != nil {
-		log.Fatalf("Error writing to temp file: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Could not create media", err)
+		return
 	}
 	fmt.Println("Successful upload")
 
-	mediaType, err := detectMediaType(mediaUrl)
+	mediaType, err := detectMediaTypeFromFilename(handler.Filename)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "File  is invalid", err)
 		return
 	}
-	if mediaType != database.MediaTypeLink {
-		respondWithError(w, http.StatusBadRequest, "Format is not a valid ", err)
+	if mediaType != database.MediaTypeAudio && mediaType != database.MediaTypeVideo {
+		respondWithError(w, http.StatusBadRequest, "Format is not a valid audio/video file", err)
 		return
 	}
 
@@ -196,7 +193,7 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 		Name:   playlistName,
 	})
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "Playlist not found", err)
+		respondWithError(w, http.StatusNotFound, "You cannot edit playlist that is not yours", err)
 		return
 	}
 	maxPosition, err := cfg.db.GetMaxMediaPosition(ctx, playlist.ID)
@@ -209,7 +206,7 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 	param := database.CreateMediaParams{
 		PlaylistID:    playlist.ID,
 		Title:         title,
-		FileUrl:       handler.Filename,
+		FileUrl:       tempFile.Name(),
 		Type:          mediaType,
 		Position:      nextPosition,
 		AddedByUserID: userID,
@@ -218,5 +215,46 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 	cfg.db.NoneLinkAdded(ctx, playlist.ID)
 
 	createdMedia, err := cfg.db.CreateMedia(ctx, param)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not create media", err)
+		return
+	}
 	respondWithJSON(w, 200, createdMedia)
+}
+
+func detectMediaTypeFromFilename(filename string) (database.MediaType, error) {
+	lower := strings.ToLower(filename)
+	if strings.HasSuffix(lower, ".mp3") || strings.HasSuffix(lower, ".ogg") || strings.HasSuffix(lower, ".wav") {
+		return database.MediaTypeAudio, nil
+	}
+	if strings.HasSuffix(lower, ".mp4") || strings.HasSuffix(lower, ".webm") {
+		return database.MediaTypeVideo, nil
+	}
+	return "", fmt.Errorf("unsupported file extension")
+}
+
+func (cfg *apiConfig) handlerGetMediaByPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwt)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
+		return
+	}
+	ID := r.URL.Query().Get("playlist_id")
+
+	playlistId, err := uuid.Parse(ID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+	}
+
+	media, err := cfg.db.GetMediaByPlaylist(ctx, playlistId)
+	if err != nil {
+		respondWithError(w, 404, "Not valid playlist", err)
+		return
+	}
 }

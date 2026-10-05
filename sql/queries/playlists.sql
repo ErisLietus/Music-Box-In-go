@@ -34,3 +34,7 @@ WHERE id = $1;
 -- name: GetUserplaylists :many
 SELECT * FROM playlists
 WHERE user_id = $1 OR is_public = TRUE;
+
+-- name: GetPlaylistByID :one
+SELECT * from playlists
+where id = $1; 
