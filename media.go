@@ -39,6 +39,7 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
 	}
 
 	if req.Title == "" || req.MediaURL == "" {
@@ -48,14 +49,15 @@ func (cfg *apiConfig) handlerImportMediaLink(w http.ResponseWriter, r *http.Requ
 
 	playlist, err := cfg.db.GetPlaylistByID(ctx, playlistId)
 
-	if playlist.UserID != userID || playlist.AllowCollabEdits == false {
-		respondWithError(w, http.StatusBadRequest, "Edit not allowed", err)
-	}
-
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Playlist not found", err)
 		return
 	}
+	if playlist.UserID != userID || playlist.AllowCollabEdits == false {
+		respondWithError(w, http.StatusForbidden, "Edit not allowed", err)
+		return
+	}
+
 	maxPosition, err := cfg.db.GetMaxMediaPosition(ctx, playlist.ID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not get media position", err)
@@ -118,9 +120,8 @@ func adjustMediaURL(URL string) (string, error) {
 }
 
 type ImportMediaRequest struct {
-	MediaURL     string `json:"media_url"`
-	PlaylistName string `json:"playlist_name"`
-	Title        string `json:"title"`
+	MediaURL string `json:"media_url"`
+	Title    string `json:"title"`
 }
 
 func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
@@ -136,14 +137,18 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("Upload file handler hit")
-
 	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Could not parse form", err)
 		return
 	}
 
-	playlistName := r.FormValue("playlist_name")
+	ID := r.FormValue("playlist_id")
+	playlistId, err := uuid.Parse(ID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid playlist id", err)
+		return
+	}
+
 	title := r.FormValue("title")
 
 	file, handler, err := r.FormFile("uploadedFile")
@@ -188,12 +193,13 @@ func (cfg *apiConfig) uploadMediaMP3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	playlist, err := cfg.db.GetPlaylistByUser(ctx, database.GetPlaylistByUserParams{
-		UserID: userID,
-		Name:   playlistName,
-	})
+	playlist, err := cfg.db.GetPlaylistByID(ctx, playlistId)
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "You cannot edit playlist that is not yours", err)
+		respondWithError(w, http.StatusNotFound, "Playlist not found", err)
+		return
+	}
+	if playlist.UserID != userID {
+		respondWithError(w, http.StatusForbidden, "You cannot edit a playlist that is not yours", err)
 		return
 	}
 	maxPosition, err := cfg.db.GetMaxMediaPosition(ctx, playlist.ID)
@@ -250,11 +256,76 @@ func (cfg *apiConfig) handlerGetMediaByPlaylist(w http.ResponseWriter, r *http.R
 	playlistId, err := uuid.Parse(ID)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+	playlist, err := cfg.db.GetPlaylistByID(ctx, playlistId)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+
+	if userID != playlist.UserID && playlist.IsPublic == false {
+		respondWithError(w, http.StatusForbidden, "Invalid", fmt.Errorf("Invalid Action"))
+		return
 	}
 
 	media, err := cfg.db.GetMediaByPlaylist(ctx, playlistId)
 	if err != nil {
-		respondWithError(w, 404, "Not valid playlist", err)
+		respondWithError(w, http.StatusNotFound, "Not valid media", err)
 		return
 	}
+	respondWithJSON(w, http.StatusOK, media)
+}
+
+func (cfg *apiConfig) handlerDeleteMedia(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwt)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
+		return
+	}
+	MID := r.URL.Query().Get("media_id")
+
+	mediaId, err := uuid.Parse(MID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+	media, err := cfg.db.GetMediaByID(ctx, mediaId)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Not valid media", err)
+		return
+	}
+
+	PID := r.URL.Query().Get("playlist_id")
+
+	playlistId, err := uuid.Parse(PID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+	playlist, err := cfg.db.GetPlaylistByID(ctx, playlistId)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+
+	if userID != media.AddedByUserID && userID != playlist.UserID {
+		respondWithError(w, http.StatusForbidden, "You cannot delete this media", fmt.Errorf("Forbidden"))
+		return
+	}
+	if media.PlaylistID != playlistId {
+		respondWithError(w, http.StatusForbidden, "Media does not belong to this playlist", fmt.Errorf("Forbidden"))
+		return
+	}
+	if err := cfg.db.DeleteMedia(ctx, media.ID); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not delete playlist", err)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, "Deleted")
 }

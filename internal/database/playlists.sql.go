@@ -156,3 +156,36 @@ func (q *Queries) NoneLinkAdded(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, noneLinkAdded, id)
 	return err
 }
+
+const updatePlaylist = `-- name: UpdatePlaylist :one
+UPDATE playlists
+SET allow_collab_edits = $2, is_public = $3, name = $4
+where id = $1
+RETURNING id, user_id, name, created_at, is_public, allow_collab_edits
+`
+
+type UpdatePlaylistParams struct {
+	ID               uuid.UUID
+	AllowCollabEdits bool
+	IsPublic         bool
+	Name             string
+}
+
+func (q *Queries) UpdatePlaylist(ctx context.Context, arg UpdatePlaylistParams) (Playlist, error) {
+	row := q.db.QueryRowContext(ctx, updatePlaylist,
+		arg.ID,
+		arg.AllowCollabEdits,
+		arg.IsPublic,
+		arg.Name,
+	)
+	var i Playlist
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.IsPublic,
+		&i.AllowCollabEdits,
+	)
+	return i, err
+}

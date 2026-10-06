@@ -68,6 +68,16 @@ func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (Mediu
 	return i, err
 }
 
+const deleteMedia = `-- name: DeleteMedia :exec
+DELETE From media
+WHERE id = $1
+`
+
+func (q *Queries) DeleteMedia(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteMedia, id)
+	return err
+}
+
 const getMaxMediaPosition = `-- name: GetMaxMediaPosition :one
 SELECT COALESCE(MAX(position), 0)::INTEGER AS max_position
 FROM media
@@ -79,6 +89,27 @@ func (q *Queries) GetMaxMediaPosition(ctx context.Context, playlistID uuid.UUID)
 	var max_position int32
 	err := row.Scan(&max_position)
 	return max_position, err
+}
+
+const getMediaByID = `-- name: GetMediaByID :one
+SELECT id, playlist_id, title, file_url, created_at, type, position, added_by_user_id From media
+where id = $1
+`
+
+func (q *Queries) GetMediaByID(ctx context.Context, id uuid.UUID) (Medium, error) {
+	row := q.db.QueryRowContext(ctx, getMediaByID, id)
+	var i Medium
+	err := row.Scan(
+		&i.ID,
+		&i.PlaylistID,
+		&i.Title,
+		&i.FileUrl,
+		&i.CreatedAt,
+		&i.Type,
+		&i.Position,
+		&i.AddedByUserID,
+	)
+	return i, err
 }
 
 const getMediaByPlaylist = `-- name: GetMediaByPlaylist :many

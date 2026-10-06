@@ -37,6 +37,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+
 	mux.Handle("/", http.FileServer(http.Dir(filepathRoot)))
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("POST /api/signup", apiCfg.handlerUsersCreate)
@@ -44,12 +45,17 @@ func main() {
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
 	mux.HandleFunc("PUT /api/users", apiCfg.handlerUsersUpdate)
+	mux.HandleFunc("GET /api/checkUser", apiCfg.CheckUserHandler)
+
 	mux.HandleFunc("POST /api/playlists", apiCfg.handlerCreatePlaylist)
+	mux.HandleFunc("GET /api/getUserPlaylists", apiCfg.handlerGetPlaylists)
+	mux.HandleFunc("DELETE /api/deletePlaylist", apiCfg.handlerDeletePlaylist)
+	mux.HandleFunc("POST /api/updatePlaylist", apiCfg.handlerUpdatePlaylists)
+
 	mux.HandleFunc("POST /api/media", apiCfg.handlerImportMediaLink)
 	mux.HandleFunc("POST /api/uploadMP3", apiCfg.uploadMediaMP3)
-	mux.HandleFunc("GET /api/getUserPlaylists", apiCfg.handlerGetPlaylists)
-	mux.HandleFunc("GET /api/checkUser", apiCfg.CheckUserHandler)
 	mux.HandleFunc("GET /api/media", apiCfg.handlerGetMediaByPlaylist)
+	mux.HandleFunc("DELETE /api/deleteMedia", apiCfg.handlerDeleteMedia)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

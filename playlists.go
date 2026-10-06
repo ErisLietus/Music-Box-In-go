@@ -10,6 +10,7 @@ import (
 
 	"github.com/ErisLietus/Music_box_go/internal/auth"
 	"github.com/ErisLietus/Music_box_go/internal/database"
+	"github.com/google/uuid"
 )
 
 type CreatePlaylistRequest struct {
@@ -31,7 +32,6 @@ func (cfg *apiConfig) handlerCreatePlaylist(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// 2. Decode the request body
 	var req CreatePlaylistRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&req); err != nil {
@@ -44,7 +44,6 @@ func (cfg *apiConfig) handlerCreatePlaylist(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// 3. Insert into Database
 	params := database.CreatePlaylistParams{
 		UserID:           userID,
 		Name:             req.Name,
@@ -64,7 +63,6 @@ func (cfg *apiConfig) handlerCreatePlaylist(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// 4. Return the created playlist object
 	respondWithJSON(w, http.StatusCreated, newPlaylist)
 }
 
@@ -87,4 +85,97 @@ func (cfg *apiConfig) handlerGetPlaylists(w http.ResponseWriter, r *http.Request
 	}
 
 	respondWithJSON(w, http.StatusOK, playlists)
+}
+
+func (cfg *apiConfig) handlerDeletePlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwt)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
+		return
+	}
+	ID := r.URL.Query().Get("playlist_id")
+
+	playlistId, err := uuid.Parse(ID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+	playlist, err := cfg.db.GetPlaylistByID(ctx, playlistId)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+
+	if userID != playlist.UserID {
+		respondWithError(w, http.StatusForbidden, "Invalid", fmt.Errorf("Forbidden"))
+		return
+	}
+	if err := cfg.db.DeletePlaylist(ctx, playlistId); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not delete playlist", err)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, "Deleted")
+}
+
+func (cfg *apiConfig) handlerUpdatePlaylists(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwt)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
+		return
+	}
+	ID := r.URL.Query().Get("playlist_id")
+
+	playlistId, err := uuid.Parse(ID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+	playlist, err := cfg.db.GetPlaylistByID(ctx, playlistId)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+
+	if userID != playlist.UserID {
+		respondWithError(w, http.StatusForbidden, "You can not update this", fmt.Errorf("Forbidden"))
+		return
+	}
+
+	var req CreatePlaylistRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err)
+		return
+	}
+
+	if req.Name == "" {
+		respondWithError(w, http.StatusBadRequest, "Playlist name is required", err)
+		return
+	}
+
+	params := database.UpdatePlaylistParams{
+		ID:               playlistId,
+		Name:             req.Name,
+		IsPublic:         req.IsPublic,
+		AllowCollabEdits: req.AllowEdit,
+	}
+
+	newPlaylist, err := cfg.db.UpdatePlaylist(ctx, params)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "could not update", err)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, newPlaylist)
 }

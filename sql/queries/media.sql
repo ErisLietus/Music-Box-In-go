@@ -39,3 +39,11 @@ VALUES (
     $6
 )
 RETURNING *;
+
+-- name: DeleteMedia :exec
+DELETE From media
+WHERE id = $1;
+
+-- name: GetMediaByID :one
+SELECT * From media
+where id = $1;

@@ -38,3 +38,9 @@ WHERE user_id = $1 OR is_public = TRUE;
 -- name: GetPlaylistByID :one
 SELECT * from playlists
 where id = $1; 
+
+-- name: UpdatePlaylist :one
+UPDATE playlists
+SET allow_collab_edits = $2, is_public = $3, name = $4
+where id = $1
+RETURNING *; 
