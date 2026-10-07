@@ -329,3 +329,110 @@ func (cfg *apiConfig) handlerDeleteMedia(w http.ResponseWriter, r *http.Request)
 	}
 	respondWithJSON(w, http.StatusOK, "Deleted")
 }
+
+func (cfg *apiConfig) handlerUpdateMediaMP3(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwt)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
+		return
+	}
+
+	MID := r.URL.Query().Get("media_id")
+	PID := r.URL.Query().Get("playlist_id")
+
+	mediaId, err := uuid.Parse(MID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+	media, err := cfg.db.GetMediaByID(ctx, mediaId)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+
+	playlistID, err := uuid.Parse(PID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+	playlist, err := cfg.db.GetPlaylistByID(ctx, playlistID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+
+	isUploader := userID == media.AddedByUserID
+	isPlaylistOwner := userID == playlist.UserID
+	if !isUploader && !isPlaylistOwner {
+		respondWithError(w, http.StatusForbidden, "You cannot update this", fmt.Errorf("forbidden"))
+		return
+	}
+	if media.PlaylistID != playlist.ID {
+		respondWithError(w, http.StatusForbidden, "Media does not belong to this playlist", fmt.Errorf("forbidden"))
+		return
+	}
+
+	title := r.FormValue("title")
+	if title == "" {
+		respondWithError(w, http.StatusBadRequest, "Title is required", fmt.Errorf("missing title"))
+		return
+	}
+
+	newFileUrl := media.FileUrl
+	newType := media.Type
+
+	file, handler, fileErr := r.FormFile("uploadedFile")
+	if fileErr == nil {
+		defer file.Close()
+
+		tempFile, err := os.CreateTemp("media-storage", "upload-*.mp3")
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Could not upload", err)
+			return
+		}
+		defer tempFile.Close()
+
+		fileBytes, err := io.ReadAll(file)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Could not read file", err)
+			return
+		}
+		if _, err := tempFile.Write(fileBytes); err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Could not save file", err)
+			return
+		}
+
+		mediaType, err := detectMediaTypeFromFilename(handler.Filename)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "File is invalid", err)
+			return
+		}
+		if mediaType != database.MediaTypeAudio && mediaType != database.MediaTypeVideo {
+			respondWithError(w, http.StatusBadRequest, "Format is not a valid audio/video file", err)
+			return
+		}
+
+		newFileUrl = tempFile.Name()
+		newType = mediaType
+	}
+
+	params := database.UpdateMediaParams{
+		ID:      mediaId,
+		Title:   title,
+		FileUrl: newFileUrl,
+		Type:    newType,
+	}
+	newMedia, err := cfg.db.UpdateMedia(ctx, params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "could not update", err)
+		return
+	}
+	respondWithJSON(w, http.StatusOK, newMedia)
+}

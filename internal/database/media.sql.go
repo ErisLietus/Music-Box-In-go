@@ -167,3 +167,38 @@ func (q *Queries) GetMediaByPlaylist(ctx context.Context, playlistID uuid.UUID) 
 	}
 	return items, nil
 }
+
+const updateMedia = `-- name: UpdateMedia :one
+UPDATE media
+SET title = $2, file_url = $3, type = $4
+where id = $1
+RETURNING id, playlist_id, title, file_url, created_at, type, position, added_by_user_id
+`
+
+type UpdateMediaParams struct {
+	ID      uuid.UUID
+	Title   string
+	FileUrl string
+	Type    MediaType
+}
+
+func (q *Queries) UpdateMedia(ctx context.Context, arg UpdateMediaParams) (Medium, error) {
+	row := q.db.QueryRowContext(ctx, updateMedia,
+		arg.ID,
+		arg.Title,
+		arg.FileUrl,
+		arg.Type,
+	)
+	var i Medium
+	err := row.Scan(
+		&i.ID,
+		&i.PlaylistID,
+		&i.Title,
+		&i.FileUrl,
+		&i.CreatedAt,
+		&i.Type,
+		&i.Position,
+		&i.AddedByUserID,
+	)
+	return i, err
+}

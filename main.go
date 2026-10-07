@@ -50,7 +50,7 @@ func main() {
 	mux.HandleFunc("POST /api/playlists", apiCfg.handlerCreatePlaylist)
 	mux.HandleFunc("GET /api/getUserPlaylists", apiCfg.handlerGetPlaylists)
 	mux.HandleFunc("DELETE /api/deletePlaylist", apiCfg.handlerDeletePlaylist)
-	mux.HandleFunc("POST /api/updatePlaylist", apiCfg.handlerUpdatePlaylists)
+	mux.HandleFunc("PUT /api/playlists", apiCfg.handlerUpdatePlaylists)
 
 	mux.HandleFunc("POST /api/media", apiCfg.handlerImportMediaLink)
 	mux.HandleFunc("POST /api/uploadMP3", apiCfg.uploadMediaMP3)

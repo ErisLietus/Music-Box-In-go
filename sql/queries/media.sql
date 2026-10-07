@@ -47,3 +47,9 @@ WHERE id = $1;
 -- name: GetMediaByID :one
 SELECT * From media
 where id = $1;
+
+-- name: UpdateMedia :one
+UPDATE media
+SET title = $2, file_url = $3, type = $4
+where id = $1
+RETURNING *; 
