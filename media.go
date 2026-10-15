@@ -315,14 +315,20 @@ func (cfg *apiConfig) handlerDeleteMedia(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if userID != media.AddedByUserID && userID != playlist.UserID {
-		respondWithError(w, http.StatusForbidden, "You cannot delete this media", fmt.Errorf("Forbidden"))
+	isUploader := userID == media.AddedByUserID
+	isPlaylistOwner := userID == playlist.UserID
+
+	if !isPlaylistOwner {
+		if !isUploader || !playlist.AllowCollabEdits {
+			respondWithError(w, http.StatusForbidden, "Edit not allowed", fmt.Errorf("forbidden"))
+			return
+		}
+	}
+	if media.PlaylistID != playlist.ID {
+		respondWithError(w, http.StatusForbidden, "Media does not belong to this playlist", fmt.Errorf("forbidden"))
 		return
 	}
-	if media.PlaylistID != playlistId {
-		respondWithError(w, http.StatusForbidden, "Media does not belong to this playlist", fmt.Errorf("Forbidden"))
-		return
-	}
+
 	if err := cfg.db.DeleteMedia(ctx, media.ID); err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not delete playlist", err)
 		return
@@ -370,9 +376,12 @@ func (cfg *apiConfig) handlerUpdateMediaMP3(w http.ResponseWriter, r *http.Reque
 
 	isUploader := userID == media.AddedByUserID
 	isPlaylistOwner := userID == playlist.UserID
-	if !isUploader && !isPlaylistOwner {
-		respondWithError(w, http.StatusForbidden, "You cannot update this", fmt.Errorf("forbidden"))
-		return
+
+	if !isPlaylistOwner {
+		if !isUploader || !playlist.AllowCollabEdits {
+			respondWithError(w, http.StatusForbidden, "Edit not allowed", fmt.Errorf("forbidden"))
+			return
+		}
 	}
 	if media.PlaylistID != playlist.ID {
 		respondWithError(w, http.StatusForbidden, "Media does not belong to this playlist", fmt.Errorf("forbidden"))
@@ -436,3 +445,115 @@ func (cfg *apiConfig) handlerUpdateMediaMP3(w http.ResponseWriter, r *http.Reque
 	}
 	respondWithJSON(w, http.StatusOK, newMedia)
 }
+
+func (cfg *apiConfig) handlerUpdateMediaLink(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.jwt)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid token", err)
+		return
+	}
+
+	var req ImportMediaRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", err)
+		return
+	}
+	MID := r.URL.Query().Get("media_id")
+	PID := r.URL.Query().Get("playlist_id")
+
+	mediaId, err := uuid.Parse(MID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+	media, err := cfg.db.GetMediaByID(ctx, mediaId)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+
+	playlistID, err := uuid.Parse(PID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+	playlist, err := cfg.db.GetPlaylistByID(ctx, playlistID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid", err)
+		return
+	}
+
+	isUploader := userID == media.AddedByUserID
+	isPlaylistOwner := userID == playlist.UserID
+
+	if !isPlaylistOwner {
+		if !isUploader || !playlist.AllowCollabEdits {
+			respondWithError(w, http.StatusForbidden, "Edit not allowed", fmt.Errorf("forbidden"))
+			return
+		}
+	}
+	if media.PlaylistID != playlist.ID {
+		respondWithError(w, http.StatusForbidden, "Media does not belong to this playlist", fmt.Errorf("forbidden"))
+		return
+	}
+
+	if req.Title == "" || req.MediaURL == "" {
+		respondWithError(w, http.StatusBadRequest, "Missing information to complete action please try again", err)
+		return
+	}
+
+	embedUrl, err := adjustMediaURL(req.MediaURL)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "this is not a valid url", err)
+		return
+	}
+
+	params := database.UpdateMediaParams{
+		ID:      mediaId,
+		Title:   req.Title,
+		FileUrl: embedUrl,
+		Type:    database.MediaTypeLink,
+	}
+	newMedia, err := cfg.db.UpdateMedia(ctx, params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "could not update", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, newMedia)
+
+}
+
+/*function MoveMedia(playlistID, mediaID, newPosition):
+    begin transaction tx
+
+    # 1. Look up the item's current position (within the tx, for consistency)
+    oldPosition = tx.GetMediaPosition(mediaID)
+
+    if oldPosition == newPosition:
+        tx.Rollback()  # nothing to do
+        return
+
+    # 2. Decide direction and shift the "in between" rows
+    if newPosition < oldPosition:
+        # item is moving UP the list (toward position 1)
+        # rows between newPosition and oldPosition-1 need to shift DOWN... 
+        # wait, which query handles "making room above"?
+        tx.ShiftPositionsDown(playlistID, newPosition, oldPosition)
+    else:
+        # item is moving DOWN the list (toward higher numbers)
+        tx.ShiftPositionsUp(playlistID, newPosition, oldPosition)
+
+    # 3. Now place the moved item into its new slot
+    tx.SetMediaPosition(mediaID, newPosition)
+
+    commit tx */
+
+	function MoveMedia(playlist_id)

@@ -10,7 +10,7 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	/*"github.com/caddyserver/certmagic"*/)
+)
 
 type apiConfig struct {
 	db  *database.Queries
@@ -56,6 +56,8 @@ func main() {
 	mux.HandleFunc("POST /api/uploadMP3", apiCfg.uploadMediaMP3)
 	mux.HandleFunc("GET /api/media", apiCfg.handlerGetMediaByPlaylist)
 	mux.HandleFunc("DELETE /api/deleteMedia", apiCfg.handlerDeleteMedia)
+	mux.HandleFunc("PUT /api/updateMediaLink", apiCfg.handlerUpdateMediaLink)
+	mux.HandleFunc("PUT /api/updateMediaMP3", apiCfg.handlerUpdateMediaMP3)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

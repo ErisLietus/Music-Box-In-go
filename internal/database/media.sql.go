@@ -168,6 +168,44 @@ func (q *Queries) GetMediaByPlaylist(ctx context.Context, playlistID uuid.UUID) 
 	return items, nil
 }
 
+const shiftPositionDown = `-- name: ShiftPositionDown :exec
+UPDATE media
+SET position = position - 1
+WHERE playlist_id = $1
+    AND position >= $2 
+    And position < $3
+`
+
+type ShiftPositionDownParams struct {
+	PlaylistID uuid.UUID
+	Position   int32
+	Position_2 int32
+}
+
+func (q *Queries) ShiftPositionDown(ctx context.Context, arg ShiftPositionDownParams) error {
+	_, err := q.db.ExecContext(ctx, shiftPositionDown, arg.PlaylistID, arg.Position, arg.Position_2)
+	return err
+}
+
+const shiftPositionUp = `-- name: ShiftPositionUp :exec
+UPDATE media
+SET position = position + 1
+WHERE playlist_id = $1
+    AND position >= $2 
+    And position < $3
+`
+
+type ShiftPositionUpParams struct {
+	PlaylistID uuid.UUID
+	Position   int32
+	Position_2 int32
+}
+
+func (q *Queries) ShiftPositionUp(ctx context.Context, arg ShiftPositionUpParams) error {
+	_, err := q.db.ExecContext(ctx, shiftPositionUp, arg.PlaylistID, arg.Position, arg.Position_2)
+	return err
+}
+
 const updateMedia = `-- name: UpdateMedia :one
 UPDATE media
 SET title = $2, file_url = $3, type = $4

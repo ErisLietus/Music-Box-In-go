@@ -53,3 +53,17 @@ UPDATE media
 SET title = $2, file_url = $3, type = $4
 where id = $1
 RETURNING *; 
+
+-- name: ShiftPositionUp :exec
+UPDATE media
+SET position = position + 1
+WHERE playlist_id = $1
+    AND position >= $2 
+    And position < $3; 
+
+-- name: ShiftPositionDown :exec
+UPDATE media
+SET position = position - 1
+WHERE playlist_id = $1
+    AND position >= $2 
+    And position < $3; 
